@@ -18,7 +18,7 @@ import (
 const Port string = "8080"
 
 // Default Base URI for LG TV
-const BaseURI string = "/udap/api"
+const BaseURI string = "/roap/api"
 
 // TV record from JSON configuration file
 type TV struct {

@@ -35,7 +35,7 @@ func TestLgRemote(t *testing.T) {
 		// tv1 := &TV{Name: "TV-1", IP: "192.168.1.100", Key: "xyz123"}
 
 		Convey("It should return a complete URI path", func() {
-			So(BuildURI(tv1, "/auth"), ShouldEqual, "http://192.168.1.100:8080/udap/api/auth")
+			So(BuildURI(tv1, "/auth"), ShouldEqual, "http://192.168.1.100:8080/roap/api/auth")
 		})
 	})
 
@@ -47,9 +47,9 @@ func TestLgRemote(t *testing.T) {
 
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
-			httpmock.RegisterResponder("POST", "http://192.168.1.100:8080/udap/api/auth", httpmock.NewStringResponder(200, response))
+			httpmock.RegisterResponder("POST", "http://192.168.1.100:8080/roap/api/auth", httpmock.NewStringResponder(200, response))
 
-			httpmock.RegisterResponder("POST", "http://192.168.1.101:8080/udap/api/auth", httpmock.NewStringResponder(500, response))
+			httpmock.RegisterResponder("POST", "http://192.168.1.101:8080/roap/api/auth", httpmock.NewStringResponder(500, response))
 
 			So(tv1.DisplayPairingKey(), ShouldEqual, true)
 			So(tv2.DisplayPairingKey(), ShouldEqual, false)
@@ -91,11 +91,11 @@ func TestLgRemote(t *testing.T) {
 
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
-			httpmock.RegisterResponder("GET", "http://192.168.1.100:8080/udap/api/data?target=is_3d", httpmock.NewStringResponder(200, falseMode))
+			httpmock.RegisterResponder("GET", "http://192.168.1.100:8080/roap/api/data?target=is_3d", httpmock.NewStringResponder(200, falseMode))
 
-			httpmock.RegisterResponder("GET", "http://192.168.1.101:8080/udap/api/data?target=is_3d", httpmock.NewStringResponder(200, trueMode))
+			httpmock.RegisterResponder("GET", "http://192.168.1.101:8080/roap/api/data?target=is_3d", httpmock.NewStringResponder(200, trueMode))
 
-			httpmock.RegisterResponder("GET", "http://192.168.1.102:8080/udap/api/data?target=is_3d", httpmock.NewStringResponder(200, unAuthorized))
+			httpmock.RegisterResponder("GET", "http://192.168.1.102:8080/roap/api/data?target=is_3d", httpmock.NewStringResponder(200, unAuthorized))
 			// Set Mock Server to return false for TV1
 			// So(tv1.Is3D(), ShouldEqual, "false")
 			So(tv1.Current3DState, ShouldEqual, "off")
@@ -128,20 +128,23 @@ func TestLgRemote(t *testing.T) {
 			sessionSuccess := `
 				<?xml version="1.0" encoding="utf-8"?><envelope><ROAPError>200</ROAPError><ROAPErrorDetail>OK</ROAPErrorDetail><session>1051689385</session></envelope>
 			`
-			httpmock.RegisterResponder("POST", "http://192.168.1.100:8080/udap/api/auth", httpmock.NewStringResponder(200, sessionSuccess))
+			httpmock.RegisterResponder("POST", "http://192.168.1.100:8080/roap/api/auth", httpmock.NewStringResponder(200, sessionSuccess))
 
-			httpmock.RegisterResponder("POST", "http://192.168.1.100:8080/udap/api/command", httpmock.NewStringResponder(200, authorizedSuccess))
+			httpmock.RegisterResponder("POST", "http://192.168.1.100:8080/roap/api/command", httpmock.NewStringResponder(200, authorizedSuccess))
 
-			httpmock.RegisterResponder("POST", "http://192.168.1.101:8080/udap/api/command", httpmock.NewStringResponder(200, authorizedFail))
+			httpmock.RegisterResponder("POST", "http://192.168.1.101:8080/roap/api/command", httpmock.NewStringResponder(200, authorizedFail))
 
-			httpmock.RegisterResponder("POST", "http://192.168.1.102:8080/udap/api/command", httpmock.NewStringResponder(200, unauthorized))
+			httpmock.RegisterResponder("POST", "http://192.168.1.102:8080/roap/api/command", httpmock.NewStringResponder(200, unauthorized))
 
+			tv1.Session = ""
 			tv1.Current3DState = "off"
 			tv2.Current3DState = "off"
 			tv3.Current3DState = "off"
 
+			So(tv1.Session, ShouldEqual, "")
 			So(tv1.Enable3D(), ShouldEqual, true)
 			So(tv1.Current3DState, ShouldEqual, "on")
+			So(tv1.Session, ShouldEqual, "1051689385")
 			So(tv2.Enable3D(), ShouldEqual, false)
 			So(tv2.Current3DState, ShouldEqual, "off")
 			So(tv3.Enable3D(), ShouldEqual, false)
@@ -161,11 +164,11 @@ func TestLgRemote(t *testing.T) {
 			<?xml version="1.0" encoding="utf-8"?><envelope><ROAPError>200</ROAPError><ROAPErrorDetail>FAIL</ROAPErrorDetail><session>1051689385</session></envelope>
 			`
 
-			httpmock.RegisterResponder("POST", "http://192.168.1.100:8080/udap/api/command", httpmock.NewStringResponder(200, authorizedSuccess))
+			httpmock.RegisterResponder("POST", "http://192.168.1.100:8080/roap/api/command", httpmock.NewStringResponder(200, authorizedSuccess))
 
-			httpmock.RegisterResponder("POST", "http://192.168.1.101:8080/udap/api/command", httpmock.NewStringResponder(200, authorizedFail))
+			httpmock.RegisterResponder("POST", "http://192.168.1.101:8080/roap/api/command", httpmock.NewStringResponder(200, authorizedFail))
 
-			httpmock.RegisterResponder("POST", "http://192.168.1.102:8080/udap/api/command", httpmock.NewStringResponder(200, unauthorized))
+			httpmock.RegisterResponder("POST", "http://192.168.1.102:8080/roap/api/command", httpmock.NewStringResponder(200, unauthorized))
 
 			tv1.Current3DState = "on"
 			tv2.Current3DState = "on"
@@ -190,9 +193,9 @@ func TestLgRemote(t *testing.T) {
 				<?xml version="1.0" encoding="utf-8"?><envelope><ROAPError>401</ROAPError><ROAPErrorDetail>Unauthorized</ROAPErrorDetail></envelope>
 			`
 
-			httpmock.RegisterResponder("POST", "http://192.168.1.100:8080/udap/api/auth", httpmock.NewStringResponder(200, sessionSuccess))
+			httpmock.RegisterResponder("POST", "http://192.168.1.100:8080/roap/api/auth", httpmock.NewStringResponder(200, sessionSuccess))
 
-			httpmock.RegisterResponder("POST", "http://192.168.1.101:8080/udap/api/auth", httpmock.NewStringResponder(200, sessionFail))
+			httpmock.RegisterResponder("POST", "http://192.168.1.101:8080/roap/api/auth", httpmock.NewStringResponder(200, sessionFail))
 
 			tv1.Session = ""
 			tv2.Session = ""
