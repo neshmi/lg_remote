@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	// "os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	// "github.com/codegangsta/cli"
 )
 
 // Default port for LG TV API
@@ -59,11 +62,15 @@ func (tv *TV) Check3D() bool {
 	url := BuildURI(tv, "/data?target=is_3d")
 	type Result struct {
 		XMLName xml.Name `xml:"envelope"`
-		Is3D    string   `xml:"dataList>data>is3D"`
+		Is3D    string   `xml:"data>is3D"`
 	}
 	v := Result{}
 
-	resp, _ := http.Get(url)
+	resp, httperr := http.Get(url)
+	if httperr != nil {
+		panic(httperr)
+	}
+
 	body, readerr := ioutil.ReadAll(resp.Body)
 	if readerr == nil {
 		xml.Unmarshal(body, &v)
@@ -193,6 +200,74 @@ func (tv *TV) GetTVSession() bool {
 	return false
 }
 
+//FindTvByName will return a TV from the TVConfig collection
+func FindTvByName(name string, tvs []TV) (tv *TV) {
+	for _, e := range tvs {
+		if e.Name == name {
+			return &e
+		}
+	}
+	return &TV{}
+}
+
 func main() {
-	fmt.Println("testing...")
+	tvs := GetAllTVs()
+	tv := FindTvByName("TV-4", tvs)
+	fmt.Printf(tv.Name)
+	if tv.Check3D() != true {
+		fmt.Print("Fail\n")
+	}
+
+	// app := cli.NewApp()
+	// app.Name = "LG Multi-screen Remote"
+	// app.Usage = "Control a cluster of LG Smart TVs"
+	//
+	// app.Commands = []cli.Command{
+	// 	{
+	// 		Name:    "enable",
+	// 		Aliases: []string{"e"},
+	// 		Usage:   "enable 3D on tv [tv name]",
+	// 		Action: func(c *cli.Context) {
+	// 			tv := FindTvByName(c.Args().First(), tvs)
+	// 			if tv.Key == "" {
+	// 				fmt.Printf("TV (%s) is not yet paired, pair the TV first\n", tv.Name)
+	// 			}
+	// 			fmt.Printf("TV IP: %s\n", tv.IP)
+	// 			fmt.Print(&tv)
+	// 			fmt.Print(tv)
+	// 			tv.Enable3D()
+	// 		},
+	// 	},
+	// 	{
+	// 		Name:    "disable",
+	// 		Aliases: []string{"d"},
+	// 		Usage:   "disable 3D on tv [tv name]",
+	// 		Action: func(c *cli.Context) {
+	// 			println("added task: ", c.Args().First())
+	// 		},
+	// 	},
+	// 	{
+	// 		Name:    "template",
+	// 		Aliases: []string{"r"},
+	// 		Usage:   "options for task templates",
+	// 		Subcommands: []cli.Command{
+	// 			{
+	// 				Name:  "add",
+	// 				Usage: "add a new template",
+	// 				Action: func(c *cli.Context) {
+	// 					println("new task template: ", c.Args().First())
+	// 				},
+	// 			},
+	// 			{
+	// 				Name:  "remove",
+	// 				Usage: "remove an existing template",
+	// 				Action: func(c *cli.Context) {
+	// 					println("removed task template: ", c.Args().First())
+	// 				},
+	// 			},
+	// 		},
+	// 	},
+	// }
+	//
+	// app.Run(os.Args)
 }

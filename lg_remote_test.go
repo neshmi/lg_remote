@@ -1,5 +1,8 @@
 package main
 
+//successful return of command
+// <?xml version="1.0" encoding="utf-8"?><envelope><ROAPError>200</ROAPError><ROAPErrorDetail>OK</ROAPErrorDetail></envelope>
+
 import (
 	"testing"
 
@@ -59,26 +62,32 @@ func TestLgRemote(t *testing.T) {
 			falseMode := `
 			<?xml version="1.0" encoding="utf-8"?>
 			<envelope>
-				<dataList name="is3D">
-	        <data>
-	            <is3D>false</is3D>
-	        </data>
-				</dataList>
+				<ROAPError>200</ROAPError>
+				<ROAPErrorDetail>OK</ROAPErrorDetail>
+				<data>
+					<is3D>false</is3D>
+				</data>
 			</envelope>
 			`
 
 			trueMode := `
 			<?xml version="1.0" encoding="utf-8"?>
 			<envelope>
-				<dataList name="is3D">
-	        <data>
-	            <is3D>true</is3D>
-	        </data>
-				</dataList>
+				<ROAPError>200</ROAPError>
+				<ROAPErrorDetail>OK</ROAPErrorDetail>
+				<data>
+					<is3D>true</is3D>
+				</data>
 			</envelope>
 			`
 
-			blankMode := ``
+			unAuthorized := `
+			<?xml version="1.0" encoding="utf-8"?>
+			<envelope>
+				<ROAPError>401</ROAPError>
+			  <ROAPErrorDetail>Unauthorized</ROAPErrorDetail>
+			</envelope>
+			`
 
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
@@ -86,7 +95,7 @@ func TestLgRemote(t *testing.T) {
 
 			httpmock.RegisterResponder("GET", "http://192.168.1.101:8080/udap/api/data?target=is_3d", httpmock.NewStringResponder(200, trueMode))
 
-			httpmock.RegisterResponder("GET", "http://192.168.1.102:8080/udap/api/data?target=is_3d", httpmock.NewStringResponder(200, blankMode))
+			httpmock.RegisterResponder("GET", "http://192.168.1.102:8080/udap/api/data?target=is_3d", httpmock.NewStringResponder(200, unAuthorized))
 			// Set Mock Server to return false for TV1
 			// So(tv1.Is3D(), ShouldEqual, "false")
 			So(tv1.Current3DState, ShouldEqual, "off")
@@ -108,13 +117,13 @@ func TestLgRemote(t *testing.T) {
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
 			authorizedSuccess := `
-			<?xml version="1.0" encoding="utf-8"?><envelope><ROAPError>200</ROAPError><ROAPErrorDetail>OK</ROAPErrorDetail><session>1051689385</session></envelope>
+				<?xml version="1.0" encoding="utf-8"?><envelope><ROAPError>200</ROAPError><ROAPErrorDetail>OK</ROAPErrorDetail></envelope>
 			`
 			authorizedFail := `
-			<?xml version="1.0" encoding="utf-8"?><envelope><ROAPError>200</ROAPError><ROAPErrorDetail>FAIL</ROAPErrorDetail><session>1051689385</session></envelope>
+			<?xml version="1.0" encoding="utf-8"?> <envelope> <ROAPError>401</ROAPError> <ROAPErrorDetail>Unauthorized</ROAPErrorDetail> </envelope>
 			`
 			unauthorized := `
-			<?xml version="1.0" encoding="utf-8"?><envelope><ROAPError>200</ROAPError><ROAPErrorDetail>FAIL</ROAPErrorDetail><session>1051689385</session></envelope>
+			<?xml version="1.0" encoding="utf-8"?> <envelope> <ROAPError>401</ROAPError> <ROAPErrorDetail>Unauthorized</ROAPErrorDetail> </envelope>
 			`
 
 			httpmock.RegisterResponder("POST", "http://192.168.1.100:8080/udap/api/command", httpmock.NewStringResponder(200, authorizedSuccess))
@@ -174,7 +183,7 @@ func TestLgRemote(t *testing.T) {
 			`
 
 			sessionFail := `
-				<?xml version="1.0" encoding="utf-8"?><envelope><ROAPError>404</ROAPError><ROAPErrorDetail>NotAuth</ROAPErrorDetail><session></session></envelope>
+				<?xml version="1.0" encoding="utf-8"?><envelope><ROAPError>401</ROAPError><ROAPErrorDetail>Unauthorized</ROAPErrorDetail></envelope>
 			`
 
 			httpmock.RegisterResponder("POST", "http://192.168.1.100:8080/udap/api/auth", httpmock.NewStringResponder(200, sessionSuccess))
