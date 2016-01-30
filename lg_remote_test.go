@@ -125,6 +125,10 @@ func TestLgRemote(t *testing.T) {
 			unauthorized := `
 			<?xml version="1.0" encoding="utf-8"?> <envelope> <ROAPError>401</ROAPError> <ROAPErrorDetail>Unauthorized</ROAPErrorDetail> </envelope>
 			`
+			sessionSuccess := `
+				<?xml version="1.0" encoding="utf-8"?><envelope><ROAPError>200</ROAPError><ROAPErrorDetail>OK</ROAPErrorDetail><session>1051689385</session></envelope>
+			`
+			httpmock.RegisterResponder("POST", "http://192.168.1.100:8080/udap/api/auth", httpmock.NewStringResponder(200, sessionSuccess))
 
 			httpmock.RegisterResponder("POST", "http://192.168.1.100:8080/udap/api/command", httpmock.NewStringResponder(200, authorizedSuccess))
 
@@ -190,6 +194,9 @@ func TestLgRemote(t *testing.T) {
 
 			httpmock.RegisterResponder("POST", "http://192.168.1.101:8080/udap/api/auth", httpmock.NewStringResponder(200, sessionFail))
 
+			tv1.Session = ""
+			tv2.Session = ""
+
 			So(tv1.Session, ShouldEqual, "")
 			So(tv1.GetTVSession(), ShouldEqual, true)
 			So(tv1.Session, ShouldEqual, "1051689385")
@@ -199,6 +206,16 @@ func TestLgRemote(t *testing.T) {
 			So(tv2.Session, ShouldEqual, "")
 		})
 
+	})
+
+	Convey("Given a group of TVs", t, func() {
+		Convey("It should find a TV by name", func() {
+			tvs := GetAllTVs()
+			tvTest1 := FindTvByName("TV-1", tvs)
+			tvTest2 := FindTvByName("TV-2", tvs)
+			So(tvTest1.Name, ShouldEqual, "TV-1")
+			So(tvTest2.Name, ShouldEqual, "TV-2")
+		})
 	})
 
 }

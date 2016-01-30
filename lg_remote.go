@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	// "os"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	// "github.com/codegangsta/cli"
+	"github.com/codegangsta/cli"
 )
 
 // Default port for LG TV API
@@ -110,7 +110,11 @@ func (tv *TV) DisplayPairingKey() bool {
 
 	v := Result{}
 
-	resp, _ := tv.SendXML(commandBody, "/auth")
+	resp, xmlerror := tv.SendXML(commandBody, "/auth")
+
+	if xmlerror != nil {
+		return false
+	}
 
 	body, readerr := ioutil.ReadAll(resp.Body)
 	if readerr == nil {
@@ -122,6 +126,13 @@ func (tv *TV) DisplayPairingKey() bool {
 
 // SendCommand to TV, 400 activates the 3D mode, 20 is the okay button
 func (tv *TV) SendCommand(command string) bool {
+	if tv.Session == "" {
+		if !tv.GetTVSession() {
+			fmt.Printf("%s could not get session\n", tv.Name)
+			return false
+		}
+	}
+
 	commandBody := fmt.Sprintf(`<!--?xml version="1.0" encoding="utf-8"?--><command><name>HandleKeyInput</name><value>%s</value></command>`, command)
 
 	type Result struct {
@@ -131,8 +142,10 @@ func (tv *TV) SendCommand(command string) bool {
 
 	v := Result{}
 
-	resp, _ := tv.SendXML(commandBody, "/command")
-
+	resp, xmlerror := tv.SendXML(commandBody, "/command")
+	if xmlerror != nil {
+		return false
+	}
 	body, readerr := ioutil.ReadAll(resp.Body)
 	if readerr == nil {
 		xml.Unmarshal(body, &v)
@@ -144,6 +157,7 @@ func (tv *TV) SendCommand(command string) bool {
 //Enable3D enables 3D mode if TV not in 3D mode
 func (tv *TV) Enable3D() bool {
 	if tv.Current3DState == "on" {
+		fmt.Printf("%s 3D Already Enabled\n", tv.Name)
 		return true
 	}
 	enableResponse := tv.SendCommand("400")
@@ -151,6 +165,7 @@ func (tv *TV) Enable3D() bool {
 	okResponse := tv.SendCommand("20")
 	if enableResponse && okResponse == true {
 		tv.Current3DState = "on"
+		fmt.Printf("%s 3D Enabled\n", tv.Name)
 		return true
 	}
 	return false
@@ -159,11 +174,13 @@ func (tv *TV) Enable3D() bool {
 //Disable3D disables 3D mode if currently in 3D
 func (tv *TV) Disable3D() bool {
 	if tv.Current3DState == "off" {
+		fmt.Printf("%s 3D Already Disabled\n", tv.Name)
 		return true
 	}
 	disableResponse := tv.SendCommand("400")
 	if disableResponse == true {
 		tv.Current3DState = "off"
+		fmt.Printf("%s 3D Disabled\n", tv.Name)
 		return true
 	}
 	return false
@@ -173,6 +190,7 @@ func (tv *TV) Disable3D() bool {
 func (tv *TV) GetTVSession() bool {
 	// abort if pairing key isn't present
 	if tv.Key == "" {
+		fmt.Printf("%s No Pairing Key, set key first\n", tv.Name)
 		return false
 	}
 
@@ -186,7 +204,11 @@ func (tv *TV) GetTVSession() bool {
 
 	v := Result{}
 
-	resp, _ := tv.SendXML(commandBody, "/auth")
+	resp, senderror := tv.SendXML(commandBody, "/auth")
+	if senderror != nil {
+		fmt.Println("Error sending command")
+		return false
+	}
 
 	body, readerr := ioutil.ReadAll(resp.Body)
 	if readerr == nil && body != nil {
@@ -202,72 +224,52 @@ func (tv *TV) GetTVSession() bool {
 
 //FindTvByName will return a TV from the TVConfig collection
 func FindTvByName(name string, tvs []TV) (tv *TV) {
-	for _, e := range tvs {
-		if e.Name == name {
-			return &e
+	for _, tvElement := range tvs {
+		if tvElement.Name == name {
+			return &tvElement
 		}
 	}
 	return &TV{}
 }
 
 func main() {
+	app := cli.NewApp()
+	app.Name = "LG Multi-screen Remote"
+	app.Usage = "Control a cluster of LG Smart TVs"
 	tvs := GetAllTVs()
-	tv := FindTvByName("TV-4", tvs)
-	fmt.Printf(tv.Name)
-	if tv.Check3D() != true {
-		fmt.Print("Fail\n")
+
+	app.Commands = []cli.Command{
+		{
+			Name:    "enable",
+			Aliases: []string{"e"},
+			Usage:   "enable 3D on tv [tv name or all]",
+			Action: func(c *cli.Context) {
+				if c.Args().First() == "all" {
+					for _, tv := range tvs {
+						go tv.Enable3D()
+					}
+				} else {
+					tv := FindTvByName(c.Args().First(), tvs)
+					tv.Enable3D()
+				}
+			},
+		},
+		{
+			Name:    "disable",
+			Aliases: []string{"d"},
+			Usage:   "disable 3D on tv [tv name]",
+			Action: func(c *cli.Context) {
+				if c.Args().First() == "all" {
+					for _, tv := range tvs {
+						go tv.Disable3D()
+					}
+				} else {
+					tv := FindTvByName(c.Args().First(), tvs)
+					tv.Disable3D()
+				}
+			},
+		},
 	}
 
-	// app := cli.NewApp()
-	// app.Name = "LG Multi-screen Remote"
-	// app.Usage = "Control a cluster of LG Smart TVs"
-	//
-	// app.Commands = []cli.Command{
-	// 	{
-	// 		Name:    "enable",
-	// 		Aliases: []string{"e"},
-	// 		Usage:   "enable 3D on tv [tv name]",
-	// 		Action: func(c *cli.Context) {
-	// 			tv := FindTvByName(c.Args().First(), tvs)
-	// 			if tv.Key == "" {
-	// 				fmt.Printf("TV (%s) is not yet paired, pair the TV first\n", tv.Name)
-	// 			}
-	// 			fmt.Printf("TV IP: %s\n", tv.IP)
-	// 			fmt.Print(&tv)
-	// 			fmt.Print(tv)
-	// 			tv.Enable3D()
-	// 		},
-	// 	},
-	// 	{
-	// 		Name:    "disable",
-	// 		Aliases: []string{"d"},
-	// 		Usage:   "disable 3D on tv [tv name]",
-	// 		Action: func(c *cli.Context) {
-	// 			println("added task: ", c.Args().First())
-	// 		},
-	// 	},
-	// 	{
-	// 		Name:    "template",
-	// 		Aliases: []string{"r"},
-	// 		Usage:   "options for task templates",
-	// 		Subcommands: []cli.Command{
-	// 			{
-	// 				Name:  "add",
-	// 				Usage: "add a new template",
-	// 				Action: func(c *cli.Context) {
-	// 					println("new task template: ", c.Args().First())
-	// 				},
-	// 			},
-	// 			{
-	// 				Name:  "remove",
-	// 				Usage: "remove an existing template",
-	// 				Action: func(c *cli.Context) {
-	// 					println("removed task template: ", c.Args().First())
-	// 				},
-	// 			},
-	// 		},
-	// 	},
-	// }
-	//
-	// app.Run(os.Args)
+	app.Run(os.Args)
 }
