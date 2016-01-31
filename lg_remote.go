@@ -156,7 +156,6 @@ func (tv *TV) SendCommand(command string) bool {
 
 //Enable3D enables 3D mode if TV not in 3D mode
 func (tv *TV) Enable3D() bool {
-	fmt.Printf("Enabling: %s\n", tv.Name)
 	if tv.Current3DState == "on" {
 		fmt.Printf("%s 3D Already Enabled\n", tv.Name)
 		return true
@@ -181,13 +180,11 @@ func (tv *TV) Enable3D() bool {
 //Disable3D disables 3D mode if currently in 3D
 func (tv *TV) Disable3D() bool {
 	if tv.Current3DState == "off" {
-		fmt.Printf("%s 3D Already Disabled\n", tv.Name)
 		return true
 	}
 	disableResponse := tv.SendCommand("400")
 	if disableResponse == true {
 		tv.Current3DState = "off"
-		fmt.Printf("%s 3D Disabled\n", tv.Name)
 		return true
 	}
 	return false
@@ -213,7 +210,7 @@ func (tv *TV) GetTVSession() bool {
 
 	resp, senderror := tv.SendXML(commandBody, "/auth")
 	if senderror != nil {
-		fmt.Println("Error sending command")
+		// fmt.Println("Error sending command")
 		return false
 	}
 
@@ -243,13 +240,14 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "LG Multi-screen Remote"
 	app.Usage = "Control a cluster of LG Smart TVs"
+	app.Version = "0.0.1"
 	tvs := GetAllTVs()
 
 	app.Commands = []cli.Command{
 		{
-			Name:    "enable",
+			Name:    "enable-3D",
 			Aliases: []string{"e"},
-			Usage:   "enable 3D on tv [tv name or all]",
+			Usage:   "enable [tv name or all]",
 			Action: func(c *cli.Context) {
 				if c.Args().First() == "all" {
 
@@ -258,7 +256,12 @@ func main() {
 					for _, tv := range tvs {
 						tv := tv
 						go func() {
-							tv.Enable3D()
+							fmt.Printf("Enabling: %s\n", tv.Name)
+							if tv.Enable3D() {
+								fmt.Printf("%s: Enabled 3D\n", tv.Name)
+							} else {
+								fmt.Printf("%s: Failed\n", tv.Name)
+							}
 							done <- true
 						}()
 					}
@@ -269,20 +272,172 @@ func main() {
 
 				} else {
 					tv := FindTvByName(c.Args().First(), tvs)
-					tv.Enable3D()
+					if tv.Name == c.Args().First() {
+						fmt.Printf("Enabling: %s\n", tv.Name)
+						if tv.Enable3D() {
+							fmt.Printf("%s: Enabled 3D\n", tv.Name)
+						} else {
+							fmt.Printf("%s: Failed\n", tv.Name)
+						}
+					} else {
+						fmt.Printf("Couldn't find tv %s\n", c.Args().First())
+					}
 				}
 			},
 		},
 		{
-			Name:    "disable",
+			Name:    "disable-3D",
 			Aliases: []string{"d"},
-			Usage:   "disable 3D on tv [tv name]",
+			Usage:   "disable [tv name or all]",
 			Action: func(c *cli.Context) {
 				if c.Args().First() == "all" {
+					done := make(chan bool)
 
+					for _, tv := range tvs {
+						tv := tv
+						go func() {
+							fmt.Printf("Disabling: %s\n", tv.Name)
+							if tv.Disable3D() {
+								fmt.Printf("%s: Disabled 3D\n", tv.Name)
+							} else {
+								fmt.Printf("%s: Failed\n", tv.Name)
+							}
+							done <- true
+						}()
+					}
+
+					for _ = range tvs {
+						<-done
+					}
 				} else {
 					tv := FindTvByName(c.Args().First(), tvs)
-					tv.Disable3D()
+					if tv.Name == c.Args().First() {
+						fmt.Printf("Disabling: %s\n", tv.Name)
+						if tv.Disable3D() {
+							fmt.Printf("%s: Disabled 3D\n", tv.Name)
+						} else {
+							fmt.Printf("%s: Failed\n", tv.Name)
+						}
+					} else {
+						fmt.Printf("Couldn't find tv %s\n", c.Args().First())
+					}
+				}
+			},
+		},
+		{
+			Name:    "query-3D-state",
+			Aliases: []string{"q"},
+			Usage:   "query [tv name or all]",
+			Action: func(c *cli.Context) {
+				if c.Args().First() == "all" {
+					done := make(chan bool)
+
+					for _, tv := range tvs {
+						tv := tv
+						go func() {
+							fmt.Printf("Checking: %s\n", tv.Name)
+							if tv.Check3D() {
+								fmt.Printf("%s 3D State: %s\n", tv.Name, tv.Current3DState)
+							} else {
+								fmt.Printf("%s: Failed\n", tv.Name)
+							}
+							done <- true
+						}()
+					}
+
+					for _ = range tvs {
+						<-done
+					}
+				} else {
+					tv := FindTvByName(c.Args().First(), tvs)
+					if tv.Name == c.Args().First() {
+						fmt.Printf("Checking: %s\n", tv.Name)
+						if tv.Check3D() {
+							fmt.Printf("%s 3D State: %s\n", tv.Name, tv.Current3DState)
+						} else {
+							fmt.Printf("%s: Failed\n", tv.Name)
+						}
+					} else {
+						fmt.Printf("Couldn't find tv %s\n", c.Args().First())
+					}
+				}
+			},
+		},
+		{
+			Name:    "display-pairing-key",
+			Aliases: []string{"r"},
+			Usage:   "pair [tv name or all]",
+			Action: func(c *cli.Context) {
+				if c.Args().First() == "all" {
+					done := make(chan bool)
+
+					for _, tv := range tvs {
+						tv := tv
+						go func() {
+							fmt.Printf("Display key for: %s\n", tv.Name)
+							if tv.DisplayPairingKey() {
+								fmt.Printf("Displaying...\n")
+							} else {
+								fmt.Printf("%s: Failed\n", tv.Name)
+							}
+							done <- true
+						}()
+					}
+
+					for _ = range tvs {
+						<-done
+					}
+				} else {
+					tv := FindTvByName(c.Args().First(), tvs)
+					if tv.Name == c.Args().First() {
+						fmt.Printf("Display key for: %s\n", tv.Name)
+						if tv.DisplayPairingKey() {
+							fmt.Printf("Displaying...\n")
+						} else {
+							fmt.Printf("%s: Failed\n", tv.Name)
+						}
+					} else {
+						fmt.Printf("Couldn't find tv %s\n", c.Args().First())
+					}
+				}
+			},
+		},
+		{
+			Name:    "power-off",
+			Aliases: []string{"p"},
+			Usage:   "pair [tv name or all]",
+			Action: func(c *cli.Context) {
+				if c.Args().First() == "all" {
+					done := make(chan bool)
+
+					for _, tv := range tvs {
+						tv := tv
+						go func() {
+							fmt.Printf("Powering off: %s\n", tv.Name)
+							if tv.SendCommand("1") {
+								fmt.Printf("Powered off %s", tv.Name)
+							} else {
+								fmt.Printf("%s: Failed\n", tv.Name)
+							}
+							done <- true
+						}()
+					}
+
+					for _ = range tvs {
+						<-done
+					}
+				} else {
+					tv := FindTvByName(c.Args().First(), tvs)
+					if tv.Name == c.Args().First() {
+						fmt.Printf("Powering off: %s\n", tv.Name)
+						if tv.SendCommand("1") {
+							fmt.Printf("Powered off %s", tv.Name)
+						} else {
+							fmt.Printf("%s: Failed\n", tv.Name)
+						}
+					} else {
+						fmt.Printf("Couldn't find tv %s\n", c.Args().First())
+					}
 				}
 			},
 		},
