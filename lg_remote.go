@@ -36,7 +36,19 @@ type TVConfig struct {
 
 // GetAllTVs builds the TVConfig (and TVs) from the JSON file
 func GetAllTVs() []TV {
-	filename, _ := filepath.Abs("./tv_config.json")
+	configPath := os.Getenv("LG_REMOTE_PATH")
+	configFile := os.Getenv("LG_REMOTE_CONFIG_FILE")
+	var filename string
+	var fileerr error
+	if configFile != "" && configPath != "" {
+		filename = filepath.Join(configPath, configFile)
+	} else {
+		filename, fileerr = filepath.Abs("./tv_config.json")
+	}
+	if fileerr != nil {
+		fmt.Println("Could not find TV Config file")
+	}
+
 	jsonFile, err := ioutil.ReadFile(filename)
 	if err != nil {
 		panic(err)
