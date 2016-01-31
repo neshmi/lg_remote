@@ -156,13 +156,20 @@ func (tv *TV) SendCommand(command string) bool {
 
 //Enable3D enables 3D mode if TV not in 3D mode
 func (tv *TV) Enable3D() bool {
+	fmt.Printf("Enabling: %s\n", tv.Name)
 	if tv.Current3DState == "on" {
 		fmt.Printf("%s 3D Already Enabled\n", tv.Name)
 		return true
 	}
+	var okResponse bool
+
 	enableResponse := tv.SendCommand("400")
-	time.Sleep(1)
-	okResponse := tv.SendCommand("20")
+	//only send the second command if the first has sent successfuly
+	if enableResponse == true {
+		time.Sleep(1)
+		okResponse = tv.SendCommand("20")
+	}
+
 	if enableResponse && okResponse == true {
 		tv.Current3DState = "on"
 		fmt.Printf("%s 3D Enabled\n", tv.Name)
@@ -245,9 +252,21 @@ func main() {
 			Usage:   "enable 3D on tv [tv name or all]",
 			Action: func(c *cli.Context) {
 				if c.Args().First() == "all" {
+
+					done := make(chan bool)
+
 					for _, tv := range tvs {
-						go tv.Enable3D()
+						tv := tv
+						go func() {
+							tv.Enable3D()
+							done <- true
+						}()
 					}
+
+					for _ = range tvs {
+						<-done
+					}
+
 				} else {
 					tv := FindTvByName(c.Args().First(), tvs)
 					tv.Enable3D()
@@ -260,9 +279,7 @@ func main() {
 			Usage:   "disable 3D on tv [tv name]",
 			Action: func(c *cli.Context) {
 				if c.Args().First() == "all" {
-					for _, tv := range tvs {
-						go tv.Disable3D()
-					}
+
 				} else {
 					tv := FindTvByName(c.Args().First(), tvs)
 					tv.Disable3D()
