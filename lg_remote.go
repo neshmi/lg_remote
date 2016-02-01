@@ -178,7 +178,7 @@ func (tv *TV) Enable3D() bool {
 	//only send the second command if the first has sent successfuly
 	if enableResponse == true {
 		time.Sleep(1)
-		okResponse = tv.SendCommand("20")
+		okResponse = tv.SendCommand("23")
 	}
 
 	if enableResponse && okResponse == true {
