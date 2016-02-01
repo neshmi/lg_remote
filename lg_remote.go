@@ -91,6 +91,8 @@ func (tv *TV) Check3D() bool {
 			tv.Current3DState = "on"
 		case "false":
 			tv.Current3DState = "off"
+    case "":
+      tv.Current3DState = "no-response"
 		default:
 			tv.Current3DState = "unknown"
 		}
@@ -176,10 +178,8 @@ func (tv *TV) Enable3D() bool {
 
 	enableResponse := tv.SendCommand("400")
 	//only send the second command if the first has sent successfuly
-	if enableResponse == true {
-		time.Sleep(1)
-		okResponse = tv.SendCommand("23")
-	}
+	time.Sleep(1)
+	okResponse = tv.SendCommand("23")
 
 	if enableResponse && okResponse == true {
 		tv.Current3DState = "on"
@@ -427,7 +427,7 @@ func main() {
 						go func() {
 							fmt.Printf("Powering off: %s\n", tv.Name)
 							if tv.SendCommand("1") {
-								fmt.Printf("Powered off %s", tv.Name)
+								fmt.Printf("Powered off %s\n", tv.Name)
 							} else {
 								fmt.Printf("%s: Failed\n", tv.Name)
 							}
