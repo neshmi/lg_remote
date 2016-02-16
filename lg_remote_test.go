@@ -84,8 +84,11 @@ func TestLgRemote(t *testing.T) {
 			unAuthorized := `
 			<?xml version="1.0" encoding="utf-8"?>
 			<envelope>
-				<ROAPError>401</ROAPError>
-			  <ROAPErrorDetail>Unauthorized</ROAPErrorDetail>
+				<ROAPError>400</ROAPError>
+				<ROAPErrorDetail>unauthorzed</ROAPErrorDetail>
+				<data>
+					<is3D>unauthorzed</is3D>
+				</data>
 			</envelope>
 			`
 
