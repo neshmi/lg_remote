@@ -180,10 +180,7 @@ func (tv *TV) Enable3D() bool {
 	//only send the second command if the first has sent successfuly
 	if enableResponse == true {
 		time.Sleep(1)
-		lrResponse := tv.SendCommand("401")
-		if lrResponse == true {
-			okResponse = tv.SendCommand("412")
-		}
+		okResponse = tv.SendCommand("412")
 	}
 
 	if enableResponse && okResponse == true {
@@ -334,6 +331,45 @@ func main() {
 							fmt.Printf("%s: Disabled 3D\n", tv.Name)
 						} else {
 							fmt.Printf("%s: Failed\n", tv.Name)
+						}
+					} else {
+						fmt.Printf("Couldn't find tv %s\n", c.Args().First())
+					}
+				}
+			},
+		},
+		{
+			Name:    "send",
+			Aliases: []string{"s"},
+			Usage:   "send tv code",
+			Action: func(c *cli.Context) {
+				if c.Args().First() == "all" {
+					done := make(chan bool)
+
+					for _, tv := range tvs {
+						tv := tv
+						go func() {
+							fmt.Printf("Sending command %s to: %s\n", c.Args()[1], tv.Name)
+							if tv.SendCommand(c.Args()[1]) {
+								fmt.Printf("Sent.\n")
+							} else {
+								fmt.Printf("Failed\n")
+							}
+							done <- true
+						}()
+					}
+
+					for _ = range tvs {
+						<-done
+					}
+				} else {
+					tv := FindTvByName(c.Args().First(), tvs)
+					if tv.Name == c.Args().First() {
+						fmt.Printf("Sending command %s to: %s\n", c.Args()[1], tv.Name)
+						if tv.SendCommand(c.Args()[1]) {
+							fmt.Printf("Sent.\n")
+						} else {
+							fmt.Printf("Failed\n")
 						}
 					} else {
 						fmt.Printf("Couldn't find tv %s\n", c.Args().First())
